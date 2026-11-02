@@ -2,12 +2,12 @@ Package: occuFitR
 Title: Goodness of Fit tests for Occupancy Models
 Version: 0.0.0.9000
 Authors@R: 
-    person("Rachel", "Drake", , "rld3@st-andrews.ac.uk", role = c("aut", "cre"))
-    person("Alison", "Johnston", , "alison.johnston@st-andrews.ac.uk", role = c("aut"))
-    person("Ben", "Stevenson", , "ben.stevenson@st-andrews.ac.uk", role = c("aut"))
+    person("Rachel", "Drake", , "rld3@st-andrews.ac.uk", role = c("aut", "cre")),
+    person("Alison", "Johnston", , "alison.johnston@st-andrews.ac.uk", role = c("aut")),
+    person("Ben", "Stevenson", , "ben.stevenson@st-andrews.ac.uk", role = c("aut")),
     person("David", "Borchers", , "dlb@st-andrews.ac.uk", role = c("aut"))
 Description: A suite of two new goodness of fit tests for unmarked occupancy model `occu`. The two tests are designed to test the goodness of fit of the model output and the detectability portion of the model at the site level separately. Diagnostic plots can be used to assess covariate residuals at the site level.
-License: `use_gpl3_license()`
+License: GPL-3
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)
 Config/roxygen2/version: 8.1.1
