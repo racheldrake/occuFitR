@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="images/hex-sticker.png" width="200">
+  <img src="images/occuFitR_hex.png" width="200">
 </p>
 
 # occuFitR
