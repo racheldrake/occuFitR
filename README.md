@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="images/hex-sticker.png" width="200">
+</p>
+
 # occuFitR
 
 **Goodness-of-fit tools for single-season occupancy models in R**
