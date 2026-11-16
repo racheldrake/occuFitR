@@ -17,4 +17,5 @@ Suggests:
     rmarkdown
 VignetteBuilder: knitr
 Imports: 
-    future.apply
+    future.apply,
+    unmarked
