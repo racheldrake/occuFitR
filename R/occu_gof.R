@@ -12,33 +12,31 @@
 #' p-values are calculated as the proportion of simulated statistics greater
 #' than or equal to the corresponding observed statistic.
 #'
-#' Optionally, the function also produces histograms of the bootstrap
-#' distributions, with the observed statistics indicated, and plots of
-#' site-level residuals against the site covariates.
+#' Site-level residuals are also calculated for the \eqn{\psi-p} and
+#' \eqn{p} statistics, allowing further investigation of model fit using
+#' covariates or spatial information.
 #'
 #' @param fit A fitted occupancy model of class \code{unmarkedFitOccu}.
 #' @param n_boot Number of parametric bootstrap replicates. Defaults to
 #'   \code{1000}.
 #' @param seed Optional random seed for reproducibility. If \code{NULL},
 #'   no seed is set.
-#' @param plot Logical. If \code{TRUE}, produce plots of the bootstrap
-#'   distributions and site-level residuals. Defaults to \code{TRUE}.
 #'
-#' @return A list containing:
+#' @return An object of class \code{occu_gof}, containing:
 #' \describe{
+#'   \item{fit}{The original fitted occupancy model.}
 #'   \item{statistic}{A named vector of the observed MB, \eqn{\psi-p}, and
 #'   \eqn{p} GOF statistics.}
 #'   \item{p_value}{A named vector of bootstrap p-values for the three
 #'   GOF statistics.}
 #'   \item{bootstrap}{A data frame containing the simulated values of
 #'   each GOF statistic across bootstrap replicates.}
-#'   \item{true_residuals}{A list containing the observed site-level
-#'   residuals for the \eqn{\psi-p} and \eqn{p} statistics.}
-#'   \item{plot}{A list of plots. This includes histograms of the three
-#'   bootstrap distributions (\code{mb}, \code{psi_p}, and \code{p}) and
-#'   site-level residual plots for the \eqn{\psi-p} and \eqn{p} statistics
-#'   (\code{site_psi_p} and \code{site_p}). If \code{plot = FALSE},
-#'   all elements of this list are \code{NULL}.}
+#'   \item{residuals}{A list containing data frames of observed site-level
+#'   residuals for the \eqn{\psi-p} and \eqn{p} statistics, including
+#'   the corresponding site indices.}
+#'   \item{site_covs}{A data frame containing the site-level covariates
+#'   from the original occupancy model, including site indices.}
+#'   \item{n_boot}{The number of bootstrap replicates performed.}
 #' }
 #'
 #' @details
@@ -47,17 +45,21 @@
 #' simulated using the fitted detection probabilities, conditional on
 #' occupancy. The observed pattern of missing visits is retained.
 #'
-#' The occupancy model is refitted to each simulated dataset before the GOF
-#' statistics are recalculated. The resulting bootstrap distributions are
-#' compared with the observed statistics to obtain upper-tail p-values.
+#' The occupancy model is refitted to each simulated dataset before the
+#' GOF statistics are recalculated. The resulting bootstrap distributions
+#' are compared with the observed statistics to obtain upper-tail p-values.
 #'
-#' The site-level residual plots compare residuals with the site covariates
-#' supplied to the original occupancy model. Residuals for the detection
-#' probability statistic are calculated only for sites where the species
+#' The \eqn{\psi-p} residuals are calculated for all sites, whereas
+#' the \eqn{p} residuals are calculated only for sites where the species
 #' was detected.
 #'
-#' @seealso \code{\link[unmarked:occu]{unmarked::occu}},
-#'   \code{\link[unmarked:getY]{unmarked::getY}}
+#' @seealso
+#' \code{\link[unmarked:occu]{unmarked::occu}},
+#' \code{\link[unmarked:getY]{unmarked::getY}},
+#' \code{\link{summary.occu_gof}},
+#' \code{\link{plot_bootstrap}},
+#' \code{\link{plot_residuals}},
+#' \code{\link{plot_spatial_residuals}}
 #'
 #' @examples
 #' \dontrun{
@@ -69,13 +71,11 @@
 #'     seed = 123
 #'   )
 #'
-#'   gof$statistic
-#'   gof$p_value
-#'   gof$plot$mb
+#'   summary(gof)
 #' }
 #'
 #' @export
-occu_gof <- function(fit, n_boot = 1000, seed = NULL, plot = TRUE) {
+occu_gof <- function(fit, n_boot = 1000, seed = NULL) {
 
   if (!is.null(seed)) set.seed(seed)
 
@@ -112,16 +112,32 @@ occu_gof <- function(fit, n_boot = 1000, seed = NULL, plot = TRUE) {
 
   # --- save true site-level residuals ---
 
-  true_residuals <- list(
-    psi_p = psi_p_obs$residuals,
-    p = p_obs$residuals
+  p_sites <- which(
+    rowSums(y, na.rm = TRUE) > 0
   )
 
+  true_residuals <- list(
+    psi_p = data.frame(
+      site = seq_len(n_sites),
+      residual = psi_p_obs$residuals
+    ),
+    p = data.frame(
+      site = p_sites,
+      residual = p_obs$residuals
+    )
+  )
 
-  # --- site-level covariates, whether included in model or no ---
+  # --- save site-level covariates ---
 
-  plot_covs <- names(fit@data@siteCovs)
+  site_covs <- siteCovs(fit@data)
 
+  if (is.null(site_covs)) {
+    site_covs <- data.frame()
+  }
+
+  site_covs <- as.data.frame(site_covs)
+
+  site_covs$site <- seq_len(n_sites)
 
 
   # --- simulation function ---
@@ -243,142 +259,17 @@ occu_gof <- function(fit, n_boot = 1000, seed = NULL, plot = TRUE) {
     )
   )
 
-
-  # --- plots ---
-
-  if (plot) {
-
-    # --- MB plot ---
-
-    plot_mb <- ggplot(
-      boot_stats,
-      aes(x = mb)
-    ) +
-      geom_histogram(
-        bins = 50,
-        fill = "grey70",
-        colour = "white"
-      ) +
-      geom_vline(
-        xintercept = T_obs["mb"],
-        linetype = 2,
-        linewidth = 1
-      ) +
-      theme_bw() +
-      labs(
-        x = "MB GOF statistic",
-        y = "Frequency",
-        title = paste0(
-          "MB GOF test: p = ",
-          round(p_values["mb"], 4)
-        )
-      )
-
-
-    # --- psi-p plot ---
-
-    plot_psi_p <- ggplot(
-      boot_stats,
-      aes(x = psi_p)
-    ) +
-      geom_histogram(
-        bins = 50,
-        fill = "grey70",
-        colour = "white"
-      ) +
-      geom_vline(
-        xintercept = T_obs["psi_p"],
-        linetype = 2,
-        linewidth = 1
-      ) +
-      theme_bw() +
-      labs(
-        x = "Psi-p GOF statistic",
-        y = "Frequency",
-        title = paste0(
-          "Psi-p GOF test: p = ",
-          round(p_values["psi_p"], 4)
-        )
-      )
-
-
-    # --- p plot ---
-
-    plot_p <- ggplot(
-      boot_stats,
-      aes(x = p)
-    ) +
-      geom_histogram(
-        bins = 50,
-        fill = "grey70",
-        colour = "white"
-      ) +
-      geom_vline(
-        xintercept = T_obs["p"],
-        linetype = 2,
-        linewidth = 1
-      ) +
-      theme_bw() +
-      labs(
-        x = "P GOF statistic",
-        y = "Frequency",
-        title = paste0(
-          "P GOF test: p = ",
-          round(p_values["p"], 4)
-        )
-      )
-
-    # --- site-level residual plots ---
-
-    plot_site_psi_p <- make_residual_plot(
+  structure(
+    list(
       fit = fit,
-      y = y,
-      residuals = psi_p_obs$residuals,
-      residual_sites = seq_along(psi_p_obs$residuals),
-      covariates = plot_covs,
-      test_name = "psi-p"
-    )
-
-    # p residuals correspond only to sites where the
-    # species was detected
-    p_sites <- which(
-      rowSums(y, na.rm = TRUE) > 0
-    )
-
-    plot_site_p <- make_residual_plot(
-      fit = fit,
-      y = y,
-      residuals = p_obs$residuals,
-      residual_sites = p_sites,
-      covariates = plot_covs,
-      test_name = "p"
-    )
-
-
-  } else {
-
-    plot_mb <- NULL
-    plot_psi_p <- NULL
-    plot_p <- NULL
-    plot_site_psi_p <- NULL
-    plot_site_p <- NULL
-
-  }
-
-
-  list(
-    statistic = T_obs,
-    p_value = p_values,
-    bootstrap = boot_stats,
-    true_residuals = true_residuals,
-
-    plot = list(
-      mb = plot_mb,
-      psi_p = plot_psi_p,
-      p = plot_p,
-      site_psi_p = plot_site_psi_p,
-      site_p = plot_site_p
-    )
+      statistic = T_obs,
+      p_value = p_values,
+      bootstrap = boot_stats,
+      residuals = true_residuals,
+      site_covs = site_covs,
+      n_boot = n_boot
+    ),
+    class = "occu_gof"
   )
 
 }
