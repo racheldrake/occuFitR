@@ -1,0 +1,160 @@
+---
+title: "Getting started with occuFitR"
+author: "Rachel Drake"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Getting started with occuFitR}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
+
+# Introduction
+
+`occuFitR` provides goodness-of-fit (GOF) tests and diagnostic tools for single-season occupancy models fitted using `unmarked`.
+
+This vignette demonstrates how to use the package to assess model fit, examine bootstrap results and investigate patterns in site-level residuals. A simulated dataset is used throughout so that the example can be reproduced without requiring external data.
+
+# Simulating occupancy data
+
+We first simulate detection histories for 100 sites surveyed on five occasions. Occupancy and detection probabilities are assumed constant across sites and survey occasions.
+
+```{r simulate}
+library(unmarked)
+library(occuFitR)
+
+set.seed(123)
+
+n_sites <- 100
+n_visits <- 5
+
+# Simulate occupancy states
+z <- rbinom(n_sites, size = 1, prob = 0.6)
+
+# Simulate detection histories
+y <- matrix(
+  0,
+  nrow = n_sites,
+  ncol = n_visits
+)
+
+for (j in seq_len(n_visits)) {
+  y[, j] <- rbinom(
+    n_sites,
+    size = 1,
+    prob = z * 0.35
+  )
+}
+
+# Create unmarkedFrame
+umf <- unmarkedFrameOccu(y = y)
+```
+
+# Fitting an occupancy model
+
+We fit a single-season occupancy model with constant occupancy and detection probabilities using `unmarked::occu()`.
+
+```{r model}
+fit <- occu(
+  ~ 1 ~ 1,
+  data = umf
+)
+
+summary(fit)
+```
+
+# Assessing goodness of fit
+
+We can assess model fit using `occu_gof()`. The function calculates three complementary GOF statistics and uses a parametric bootstrap to generate reference distributions under the fitted model.
+
+```{r gof}
+withCallingHandlers(
+  gof <- occu_gof(fit, n_boot = 5, seed = 123),
+  error = function(e) {
+    cat("\n--- Error details ---\n")
+    print(conditionMessage(e))
+    cat("\n--- Calls at point of failure ---\n")
+    print(sys.calls())
+    stop(e)
+  }
+)
+```
+
+The number of bootstrap replicates can be increased for a more precise assessment. A smaller number is used here to keep the vignette quick to build.
+
+## Test statistics and p-values
+
+The observed values of the three GOF statistics are available through the `statistic` component:
+
+```{r statistics}
+gof$statistic
+```
+
+Bootstrap p-values are available through:
+
+```{r p-values}
+gof$p_value
+```
+
+Small p-values indicate that the observed test statistic is unusually large relative to the bootstrap distribution, providing evidence of lack of fit.
+
+## Bootstrap distributions
+
+The bootstrap distributions can also be examined directly:
+
+```{r bootstrap}
+head(gof$bootstrap)
+```
+
+# Examining site-level residuals
+
+The `psi_p` and `p` statistics provide site-level residuals that can be used to investigate patterns in model fit.
+
+```{r residuals}
+head(gof$residuals$psi_p)
+head(gof$residuals$p)
+```
+
+## Residuals against site covariates
+
+`plot_residuals()` produces diagnostic plots of site-level residuals against site covariates. Numeric covariates are displayed with GAM smooths, while categorical covariates are displayed using boxplots.
+
+For example, residuals from the occupancy and detection probability statistic can be plotted against the site covariates:
+
+```{r covariate-plots, eval=FALSE}
+plot_residuals(
+  gof,
+  test = "psi_p"
+)
+```
+
+## Spatial residual patterns
+
+When spatial coordinates are available in the site covariates, `plot_spatial_residuals()` can be used to investigate spatial patterns in residuals.
+
+For example, with projected coordinates:
+
+```{r spatial-plots, eval=FALSE}
+plot_spatial_residuals(
+  gof,
+  test = "psi_p",
+  coords = c("easting", "northing"),
+  crs = 27700
+)
+```
+
+A user-supplied polygon can also be used to define the prediction area through the `boundary` argument.
+
+# Further information
+
+See the package documentation for details of the individual GOF statistics and diagnostic functions:
+
+- `?occu_gof`
+- `?plot_residuals`
+- `?plot_spatial_residuals`

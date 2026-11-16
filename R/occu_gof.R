@@ -129,13 +129,13 @@ occu_gof <- function(fit, n_boot = 1000, seed = NULL) {
 
   # --- save site-level covariates ---
 
-  site_covs <- siteCovs(fit@data)
+  site_covs <- as.data.frame(siteCovs(fit@data))
 
-  if (is.null(site_covs)) {
-    site_covs <- data.frame()
+  # Ensure there is one row per site, including when
+  # the model has no site-level covariates
+  if (nrow(site_covs) == 0L) {
+    site_covs <- data.frame(row.names = seq_len(n_sites))
   }
-
-  site_covs <- as.data.frame(site_covs)
 
   site_covs$site <- seq_len(n_sites)
 
@@ -222,7 +222,7 @@ occu_gof <- function(fit, n_boot = 1000, seed = NULL) {
 
   # --- bootstrap ---
 
-  boot_results <- future_replicate(
+  boot_results <- future.apply::future_replicate(
     n_boot,
     sim_once(),
     simplify = FALSE
