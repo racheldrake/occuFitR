@@ -85,24 +85,17 @@ occu_gof <- function(fit, n_boot = 1000, seed = NULL) {
   n_visits <- ncol(y)
 
   # --- model predictions ---
+  predictions <- .get_occu_predictions(fit)
 
-  psi_hat <- predict(fit, type = "state")$Predicted
-
-  det_hat <- predict(fit, type = "det")$Predicted
-
-  p_mat <- matrix(
-    det_hat,
-    nrow = n_sites,
-    ncol = n_visits,
-    byrow = TRUE
-  )
+  psi_hat <- predictions$psi
+  p_mat <- predictions$p_mat
 
 
   # --- observed data stats ---
 
-  mb_obs <- mb_stat(fit)
-  psi_p_obs <- psi_p_stat(fit)
-  p_obs <- p_stat(fit)
+  mb_obs <- mb_stat(fit, predictions)
+  psi_p_obs <- psi_p_stat(fit, predictions)
+  p_obs <- p_stat(fit, predictions)
 
   T_obs <- c(
     mb = mb_obs$statistic,
@@ -194,17 +187,13 @@ occu_gof <- function(fit, n_boot = 1000, seed = NULL) {
       obsCovs = obsCovs(fit@data)
     )
 
-    fit_sim <- update(
-      fit,
-      data = umf_sim
-    )
+    fit_sim <- update(fit, data = umf_sim)
 
+    predictions_sim <- .get_occu_predictions(fit_sim)
 
-    # calculate simulated data stats
-
-    mb_sim <- mb_stat(fit_sim)
-    psi_p_sim <- psi_p_stat(fit_sim)
-    p_sim <- p_stat(fit_sim)
+    mb_sim <- mb_stat(fit_sim, predictions_sim)
+    psi_p_sim <- psi_p_stat(fit_sim, predictions_sim)
+    p_sim <- p_stat(fit_sim, predictions_sim)
 
     # arrange outputs
     list(

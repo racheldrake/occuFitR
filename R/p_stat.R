@@ -12,11 +12,14 @@
 #' GOF statistic is obtained by summing their squared values.
 #'
 #' @param fit A fitted occupancy model of class \code{unmarkedFitOccu}.
+#' @param predictions Optional list of fitted occupancy and detection
+#'   probabilities, as returned by \code{.get_occu_predictions()}. Supplying
+#'   precomputed predictions avoids recalculating them.
 #'
 #' @return A list containing:
 #' \describe{
 #'   \item{statistic}{The overall detection probability GOF statistic,
-#'   calculated as the sum of squared standardised site-level residuals.}
+#''   calculated as the sum of squared standardised site-level residuals.}
 #'   \item{residuals}{A numeric vector of standardised site-level residuals
 #'   for sites where the species was detected.}
 #'   \item{observed}{The observed number of detections at each included site.}
@@ -38,19 +41,18 @@
 #' and expected detection frequencies.
 #'
 #' @keywords internal
-p_stat <- function(fit){
+p_stat <- function(fit, predictions = NULL){
   y <- unmarked::getY(fit)
 
   n_sites <- nrow(y)
   n_visits <- ncol(y)
 
-  psi_hat <- predict(fit, type="state")$Predicted
-  det_hat <- predict(fit, type="det")$Predicted
+  if (is.null(predictions)) {
+    predictions <- .get_occu_predictions(fit)
+  }
 
-  p_mat <- matrix(det_hat,
-                  nrow=n_sites,
-                  ncol=n_visits,
-                  byrow=TRUE)
+  psi_hat <- predictions$psi
+  p_mat <- predictions$p_mat
 
   p_dot <- apply(p_mat,1,function(p){
     p <- p[!is.na(p)]

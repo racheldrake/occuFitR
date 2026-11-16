@@ -12,6 +12,9 @@
 #' GOF statistic is obtained by summing their squared values.
 #'
 #' @param fit A fitted occupancy model of class \code{unmarkedFitOccu}.
+#' @param predictions Optional list of fitted occupancy and detection
+#'   probabilities, as returned by \code{.get_occu_predictions()}. Supplying
+#'   precomputed predictions avoids recalculating them.
 #'
 #' @return A list containing:
 #' \describe{
@@ -41,61 +44,52 @@
 #' expected detection frequencies.
 #'
 #' @keywords internal
-psi_p_stat <- function(fit){
+psi_p_stat <- function(fit, predictions = NULL){
 
   y <- unmarked::getY(fit)
 
   n_sites <- nrow(y)
   n_visits <- ncol(y)
 
-  psi_hat <- predict(fit, type="state")$Predicted
-  det_hat <- predict(fit, type="det")$Predicted
+  if (is.null(predictions)) {
+    predictions <- .get_occu_predictions(fit)
+  }
 
-  p_mat <- matrix(det_hat,
-                  nrow=n_sites,
-                  ncol=n_visits,
-                  byrow=TRUE)
+  psi_hat <- predictions$psi
+  p_mat <- predictions$p_mat
 
-  p_dot <- apply(p_mat,1,function(p){
-    p <- p[!is.na(p)]
-    1-prod(1-p)
-  })
+  # Expected number of detections
+  E_i <- psi_hat * rowSums(p_mat, na.rm = TRUE)
 
-  E_i <- psi_hat * rowSums(p_mat,na.rm=TRUE)
-
-
+  # First component of variance
   term1 <- rowSums(
-    psi_hat*p_mat*(1-psi_hat*p_mat),
-    na.rm=TRUE
+    psi_hat * p_mat * (1 - psi_hat * p_mat),
+    na.rm = TRUE
   )
 
-  term2 <- sapply(seq_len(n_sites), function(i){
+  # Second component of variance
+  p_sum <- rowSums(p_mat, na.rm = TRUE)
+  p_sq_sum <- rowSums(p_mat^2, na.rm = TRUE)
 
-    p <- p_mat[i,!is.na(p_mat[i,])]
+  pair_sum <- (p_sum^2 - p_sq_sum) / 2
 
-    if(length(p)<2) return(0)
-
-    pairs <- combn(p,2)
-
-    2*psi_hat[i]*(1-psi_hat[i])*
-      sum(pairs[1,]*pairs[2,])
-
-  })
+  term2 <- 2 * psi_hat * (1 - psi_hat) * pair_sum
 
   Var_i <- term1 + term2
 
-  O_i <- rowSums(y,na.rm=TRUE)
+  # Observed detections
+  O_i <- rowSums(y, na.rm = TRUE)
 
-  T_i <- (O_i-E_i)/sqrt(Var_i)
+  # Residuals and overall statistic
+  T_i <- (O_i - E_i) / sqrt(Var_i)
 
-  T_total <- sum((O_i-E_i)^2/Var_i,na.rm=TRUE)
+  T_total <- sum((O_i - E_i)^2 / Var_i, na.rm = TRUE)
 
   list(
-    statistic=T_total,
+    statistic = T_total,
     residuals = T_i,
-    observed=O_i,
-    expected=E_i,
-    variance=Var_i
+    observed = O_i,
+    expected = E_i,
+    variance = Var_i
   )
-
 }

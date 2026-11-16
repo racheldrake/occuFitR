@@ -13,6 +13,9 @@
 #' statistic.
 #'
 #' @param fit A fitted occupancy model of class \code{unmarkedFitOccu}.
+#' @param predictions Optional list of fitted occupancy and detection
+#'   probabilities, as returned by \code{.get_occu_predictions()}. Supplying
+#'   precomputed predictions avoids recalculating them.
 #'
 #' @return A list containing:
 #' \describe{
@@ -40,32 +43,22 @@
 #' The overall statistic is then calculated across all detection histories.
 #'
 #' @keywords internal
-mb_stat <- function(fit){
+mb_stat <- function(fit, predictions = NULL) {
 
   y <- unmarked::getY(fit)
 
-  n_sites  <- nrow(y)
+  n_sites <- nrow(y)
   n_visits <- ncol(y)
 
-  # -----------------------------
   # Model predictions
-  # -----------------------------
+  if (is.null(predictions)) {
+    predictions <- .get_occu_predictions(fit)
+  }
 
-  psi_hat <- predict(fit, type = "state")$Predicted
+  psi_hat <- predictions$psi
+  p_mat <- predictions$p_mat
 
-  det_hat <- predict(fit, type = "det")$Predicted
-
-  p_mat <- matrix(
-    det_hat,
-    nrow = n_sites,
-    ncol = n_visits,
-    byrow = TRUE
-  )
-
-  # -----------------------------
   # Observed histories
-  # -----------------------------
-
   obs_hist <- apply(
     y,
     1,
@@ -74,110 +67,79 @@ mb_stat <- function(fit){
 
   obs_counts <- table(obs_hist)
 
-  # -----------------------------
-  # All possible histories for each
-  # missing-data pattern
-  # -----------------------------
-
+  # Missing-data patterns
   patterns <- unique(gsub("[01]", "x", obs_hist))
 
-  history_probability <- function(history, psi, p){
+  expected_counts <- numeric()
 
-    h <- strsplit(history, "")[[1]]
-
-    keep <- h != "."
-
-    h <- h[keep]
-    p <- p[keep]
-
-    valid <- !is.na(p)
-
-    h <- h[valid]
-    p <- p[valid]
-
-    if(length(p) == 0)
-      return(1)
-
-    prob_occ <-
-      psi *
-      prod(ifelse(h == "1", p, 1 - p))
-
-    prob_unocc <-
-      if(all(h == "0")) 1 - psi else 0
-
-    prob_occ + prob_unocc
-  }
-
-  expected_counts <- c()
-
-  for(pattern in patterns){
+  for (pattern in patterns) {
 
     fixed <- strsplit(pattern, "")[[1]]
-
     x_pos <- which(fixed == "x")
 
-    if(length(x_pos) == 0){
-
+    # Enumerate histories
+    if (length(x_pos) == 0) {
       histories <- pattern
-
     } else {
+      combos <- expand.grid(
+        rep(list(c("0", "1")), length(x_pos))
+      )
 
-      combos <- expand.grid(rep(list(c("0","1")), length(x_pos)))
-
-      histories <- apply(combos, 1, function(z){
-
+      histories <- apply(combos, 1, function(z) {
         h <- fixed
         h[x_pos] <- z
         paste(h, collapse = "")
-
       })
-
     }
 
     site_ids <- which(gsub("[01]", "x", obs_hist) == pattern)
 
-    for(hist in histories){
+    # Extract probabilities for sites in this pattern
+    psi <- psi_hat[site_ids]
+    p <- p_mat[site_ids, , drop = FALSE]
 
-      expected_counts[hist] <-
-        sum(
-          sapply(site_ids, function(i){
+    # Only use visits that are observed for this pattern
+    observed_pos <- which(fixed != ".")
 
-            history_probability(
-              hist,
-              psi_hat[i],
-              p_mat[i,]
-            )
+    p <- p[, observed_pos, drop = FALSE]
 
-          })
-        )
+    for (hist in histories) {
 
+      h <- as.integer(strsplit(hist, "")[[1]][observed_pos])
+
+      # Probability of this history conditional on occupancy
+      prob_occ <- apply(
+        ifelse(
+          matrix(h, nrow = length(site_ids), ncol = length(h), byrow = TRUE) == 1,
+          p,
+          1 - p
+        ),
+        1,
+        prod
+      )
+
+      # Add probability of being unoccupied
+      prob_unocc <- if (all(h == 0)) 1 - psi else rep(0, length(psi))
+
+      expected_counts[hist] <- sum(psi * prob_occ + prob_unocc)
     }
-
   }
 
-  # -----------------------------
   # Statistic
-  # -----------------------------
-
   obs_all <- table(
-    factor(
-      obs_hist,
-      levels = names(expected_counts)
-    )
+    factor(obs_hist, levels = names(expected_counts))
   )
 
   exp_all <- expected_counts
 
-  T_obs <-
-    sum(
-      (obs_all - exp_all)^2 / exp_all,
-      na.rm = TRUE
-    )
+  T_obs <- sum(
+    (obs_all - exp_all)^2 / exp_all,
+    na.rm = TRUE
+  )
 
   list(
     statistic = T_obs,
     observed = obs_all,
     expected = exp_all
   )
-
 }
