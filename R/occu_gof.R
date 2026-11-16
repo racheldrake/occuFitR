@@ -122,7 +122,7 @@ occu_gof <- function(fit, n_boot = 1000, seed = NULL) {
 
   # --- save site-level covariates ---
 
-  site_covs <- as.data.frame(siteCovs(fit@data))
+  site_covs <- as.data.frame(unmarked::siteCovs(fit@data))
 
   # Ensure there is one row per site, including when
   # the model has no site-level covariates
@@ -181,13 +181,13 @@ occu_gof <- function(fit, n_boot = 1000, seed = NULL) {
 
     # fit model to generated data
 
-    umf_sim <- unmarkedFrameOccu(
+    umf_sim <- unmarked::unmarkedFrameOccu(
       y = y_sim,
-      siteCovs = siteCovs(fit@data),
-      obsCovs = obsCovs(fit@data)
+      siteCovs = unmarked::siteCovs(fit@data),
+      obsCovs = unmarked::obsCovs(fit@data)
     )
 
-    fit_sim <- update(fit, data = umf_sim)
+    fit_sim <- unmarked::update(fit, data = umf_sim)
 
     predictions_sim <- .get_occu_predictions(fit_sim)
 
