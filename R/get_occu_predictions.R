@@ -5,8 +5,8 @@
   n_sites <- nrow(y)
   n_visits <- ncol(y)
 
-  psi_hat <- predict(fit, type = "state")$Predicted
-  det_hat <- predict(fit, type = "det")$Predicted
+  psi_hat <- unmarked::predict(fit, type = "state")$Predicted
+  det_hat <- unmarked::predict(fit, type = "det")$Predicted
 
   p_mat <- matrix(
     det_hat,
