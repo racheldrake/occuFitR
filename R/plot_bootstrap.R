@@ -1,3 +1,28 @@
+#' Plot bootstrap distributions of goodness-of-fit statistics
+#'
+#' Creates a histogram of the parametric bootstrap distribution for a
+#' goodness-of-fit statistic, with a vertical dashed line indicating
+#' the observed statistic.
+#'
+#' @param x An object of class \code{occu_gof}, returned by
+#'   \code{\link{occu_gof}}.
+#' @param test A character string specifying which goodness-of-fit
+#'   statistic to plot. Either \code{"mb"}, \code{"psi_p"} or
+#'   \code{"p"}.
+#'
+#' @return A \code{ggplot} object showing the bootstrap distribution
+#'   of the selected goodness-of-fit statistic.
+#'
+#' @details
+#' The histogram displays the distribution of statistics obtained
+#' from parametric bootstrap simulations. The observed statistic is
+#' indicated by a vertical dashed line. The plot title includes the
+#' corresponding bootstrap p-value.
+#'
+#' @seealso \code{\link{occu_gof}}, \code{\link{plot_residuals}},
+#'   \code{\link{plot_spatial_residuals}}
+#'
+#' @export
 plot_bootstrap <- function(x, test) {
 
   test <- match.arg(

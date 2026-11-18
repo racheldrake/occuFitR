@@ -4,16 +4,20 @@
 \alias{p_stat}
 \title{Calculate the detection probability goodness-of-fit statistic}
 \usage{
-p_stat(fit)
+p_stat(fit, predictions = NULL)
 }
 \arguments{
 \item{fit}{A fitted occupancy model of class \code{unmarkedFitOccu}.}
+
+\item{predictions}{Optional list of fitted occupancy and detection
+probabilities, as returned by \code{.get_occu_predictions()}. Supplying
+precomputed predictions avoids recalculating them.}
 }
 \value{
 A list containing:
 \describe{
 \item{statistic}{The overall detection probability GOF statistic,
-calculated as the sum of squared standardised site-level residuals.}
+'   calculated as the sum of squared standardised site-level residuals.}
 \item{residuals}{A numeric vector of standardised site-level residuals
 for sites where the species was detected.}
 \item{observed}{The observed number of detections at each included site.}

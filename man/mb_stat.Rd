@@ -4,10 +4,14 @@
 \alias{mb_stat}
 \title{Calculate the MacKenzie-Bailey goodness-of-fit statistic}
 \usage{
-mb_stat(fit)
+mb_stat(fit, predictions = NULL)
 }
 \arguments{
 \item{fit}{A fitted occupancy model of class \code{unmarkedFitOccu}.}
+
+\item{predictions}{Optional list of fitted occupancy and detection
+probabilities, as returned by \code{.get_occu_predictions()}. Supplying
+precomputed predictions avoids recalculating them.}
 }
 \value{
 A list containing:

@@ -11,7 +11,6 @@ Description: A suite of two new goodness-of-fit tests for unmarked occupancy mod
 License: GPL-3
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)
-RoxygenNote: 8.1.1
 Suggests: 
     knitr,
     rmarkdown
@@ -22,3 +21,4 @@ Imports:
     mgcv,
     dplyr,
     tidyr
+Config/roxygen2/version: 8.1.1

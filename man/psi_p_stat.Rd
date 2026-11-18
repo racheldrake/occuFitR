@@ -4,10 +4,14 @@
 \alias{psi_p_stat}
 \title{Calculate the occupancy and detection probability goodness-of-fit statistic}
 \usage{
-psi_p_stat(fit)
+psi_p_stat(fit, predictions = NULL)
 }
 \arguments{
 \item{fit}{A fitted occupancy model of class \code{unmarkedFitOccu}.}
+
+\item{predictions}{Optional list of fitted occupancy and detection
+probabilities, as returned by \code{.get_occu_predictions()}. Supplying
+precomputed predictions avoids recalculating them.}
 }
 \value{
 A list containing:
