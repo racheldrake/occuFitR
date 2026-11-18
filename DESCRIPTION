@@ -18,4 +18,7 @@ Suggests:
 VignetteBuilder: knitr
 Imports: 
     future.apply,
-    unmarked
+    unmarked,
+    mgcv,
+    dplyr,
+    tidyr

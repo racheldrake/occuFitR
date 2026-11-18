@@ -20,12 +20,15 @@
 #' @param crs The coordinate reference system of the supplied coordinates.
 #'   Can be a CRS object, EPSG code or PROJ string accepted by
 #'   \code{sf::st_crs}.
-#'
 #' @param boundary Either \code{"convex_hull"} to use the convex hull
 #'   of the sampling sites, or an \code{sf} or \code{sfc} polygon object
 #'   defining the area over which predictions should be made. If a
 #'   supplied boundary has a different CRS, it is transformed to the
 #'   CRS specified by \code{crs}.
+#' @param ... additional arguments to be added to customise the \code{mgcv::gam} smooth
+#'   only. To update plots please use the function output with the usual '+'
+#'   syntax for ggplot2. See \code{\link{mgcv::gam}}
+#'
 #'
 #' @return A named list containing two \code{ggplot} objects:
 #'   \code{smooth}, showing the spatial smooth of residuals, and
@@ -54,7 +57,8 @@ plot_spatial_residuals <- function(
     coords,
     test,
     crs,
-    boundary = "convex_hull"
+    boundary = "convex_hull",
+    ...
 ) {
 
   if (!test %in% c("psi_p", "p")) {
@@ -173,11 +177,27 @@ plot_spatial_residuals <- function(
       x_coord,
       y_coord,
       bs = "tp",
-      k = min(10, n_unique_coords - 1)
+      k = min(50, n_unique_coords - 1)
     ),
     data = plot_data,
-    method = "REML"
+    method = "REML",
+    ...
   )
+
+  # Extract spatial smooth significance
+  smooth_summary <- summary(spatial_model)$s.table
+
+  smooth_edf <- smooth_summary[1, "edf"]
+  smooth_p <- smooth_summary[1, "p-value"]
+
+  smooth_label <- if (smooth_p < 0.05) {
+    "Spatial smooth: p < 0.05"
+  } else {
+    paste0(
+      "Spatial smooth: p = ",
+      signif(smooth_p, 3)
+    )
+  }
 
   # Generate prediction grid
   prediction_grid <- expand.grid(
@@ -327,12 +347,42 @@ plot_spatial_residuals <- function(
     ggplot2::labs(
       x = coords[1],
       y = coords[2],
-      title = "Spatial smooth of residuals"
+      title = "Spatial smooth of residuals",
+      subtitle = smooth_label
     )
 
   # --------------------------------------------------
   # 2. Site-level residuals
   # --------------------------------------------------
+
+  # Calculate minimum nearest-neighbour distance
+  nn_dist <- sf::st_nearest_feature(
+    plot_sf,
+    plot_sf
+  )
+
+  distances <- sf::st_distance(
+    plot_sf,
+    plot_sf[nn_dist, ],
+    by_element = TRUE
+  )
+
+  min_dist <- min(distances[distances > 0])
+
+  # Calculate maximum point size based on coordinate spacing
+  x_range <- diff(range(plot_data$x_coord))
+  y_range <- diff(range(plot_data$y_coord))
+
+  plot_width <- 150
+  plot_height <- 150
+
+  x_per_mm <- x_range / plot_width
+  y_per_mm <- y_range / plot_height
+
+  max_point_size <- 0.8 * min(
+    min_dist / x_per_mm,
+    min_dist / y_per_mm
+  )
 
   sites_plot <- ggplot2::ggplot(
     plot_data,
@@ -353,7 +403,7 @@ plot_spatial_residuals <- function(
       name = "Residual"
     ) +
     ggplot2::scale_size_continuous(
-      range = c(1, 8),
+      range = c(min(1, max_point_size), max_point_size),
       name = "Absolute residual"
     ) +
     ggplot2::coord_sf(
