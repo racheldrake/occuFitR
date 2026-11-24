@@ -355,45 +355,21 @@ plot_spatial_residuals <- function(
   # 2. Site-level residuals
   # --------------------------------------------------
 
-  # Calculate minimum nearest-neighbour distance
-  nn_dist <- sf::st_nearest_feature(
-    plot_sf,
-    plot_sf
-  )
-
-  distances <- sf::st_distance(
-    plot_sf,
-    plot_sf[nn_dist, ],
-    by_element = TRUE
-  )
-
-  min_dist <- min(distances[distances > 0])
-
-  # Calculate maximum point size based on coordinate spacing
-  x_range <- diff(range(plot_data$x_coord))
-  y_range <- diff(range(plot_data$y_coord))
-
-  plot_width <- 150
-  plot_height <- 150
-
-  x_per_mm <- x_range / plot_width
-  y_per_mm <- y_range / plot_height
-
-  max_point_size <- 0.8 * min(
-    min_dist / x_per_mm,
-    min_dist / y_per_mm
-  )
-
   sites_plot <- ggplot2::ggplot(
     plot_data,
-    ggplot2::aes(
+  ) + ggplot2::geom_sf(
+    data = sf::st_as_sf(prediction_boundary),
+    fill = NA,
+    colour = "black",
+    linewidth = 0.6
+  ) +
+    ggplot2::geom_point(ggplot2::aes(
       x = x_coord,
       y = y_coord,
       colour = residual_sign,
       size = abs(residual)
-    )
-  ) +
-    ggplot2::geom_point(alpha = 0.8) +
+    ),
+    alpha = 0.8) +
     ggplot2::scale_colour_manual(
       values = c(
         "Negative" = "#2166AC",
@@ -403,7 +379,7 @@ plot_spatial_residuals <- function(
       name = "Residual"
     ) +
     ggplot2::scale_size_continuous(
-      range = c(min(1, max_point_size), max_point_size),
+      range = c(0.5, 3),
       name = "Absolute residual"
     ) +
     ggplot2::coord_sf(
