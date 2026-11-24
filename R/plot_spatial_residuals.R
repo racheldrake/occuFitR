@@ -37,7 +37,7 @@
 #' @details
 #' Residuals are joined to their corresponding site coordinates using
 #' site indices. The spatial smooth is estimated using a two-dimensional
-#' thin-plate regression spline fitted with \code{mgcv::gam}. Predictions are
+#' thin-plate regression spline fitted with \code{\link[mgcv]{gam}}. Predictions are
 #' restricted to either the convex hull of the sampling
 #' sites or a user-supplied polygon boundary.
 #'
