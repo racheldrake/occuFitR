@@ -27,7 +27,7 @@
 #'   CRS specified by \code{crs}.
 #' @param ... additional arguments to be added to customise the \code{mgcv::gam} smooth
 #'   only. To update plots please use the function output with the usual '+'
-#'   syntax for ggplot2. See \code{\link{mgcv::gam}}
+#'   syntax for ggplot2. See \code{\link[mgcv]{gam}}.
 #'
 #'
 #' @return A named list containing two \code{ggplot} objects:
